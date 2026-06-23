@@ -1,0 +1,109 @@
+name: CD - Deploy to IIS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  DEPLOY_ROOT: C:\Projects\GameHub-Developer-Package
+  BACKEND_DIR: C:\Projects\GameHub-Developer-Package\game-hub-backend-main\game-hub-backend-main
+  IIS_SITE: GameHubPro
+
+jobs:
+  deploy:
+    name: Deploy to Windows IIS
+    runs-on: self-hosted
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Build frontend
+        shell: pwsh
+        run: |
+          npm ci
+          npm run build
+
+      - name: Sync files to deploy folder
+        shell: pwsh
+        run: |
+          $src = $env:GITHUB_WORKSPACE
+          $dest = $env:DEPLOY_ROOT
+          if (-not (Test-Path $dest)) {
+            New-Item -ItemType Directory -Path $dest -Force | Out-Null
+          }
+          robocopy $src $dest /E `
+            /XD node_modules .git __pycache__ .pytest_cache .venv .vite .vite-temp `
+            /XF .env .env.* *.zip `
+            /NFL /NDL /NJH /NJS
+          if ($LASTEXITCODE -ge 8) { exit $LASTEXITCODE }
+          exit 0
+
+      - name: Install Python dependencies
+        shell: pwsh
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: |
+          if (-not (Test-Path .venv\Scripts\python.exe)) {
+            python -m venv .venv
+          }
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip
+          .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+          .\.venv\Scripts\python.exe -m pip install reportlab
+
+      - name: Run database migrations
+        shell: pwsh
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: .\.venv\Scripts\python.exe -m alembic upgrade head
+
+      - name: Update IIS web.config
+        shell: pwsh
+        working-directory: ${{ env.BACKEND_DIR }}
+        run: |
+          $python = (Resolve-Path .\.venv\Scripts\python.exe).Path -replace '\\', '\\'
+          $backend = (Resolve-Path .).Path -replace '\\', '\\'
+          $logDir = Join-Path (Resolve-Path .).Path "logs"
+          New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+          $stdout = (Join-Path $logDir "iis-stdout") -replace '\\', '\\'
+          @"
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <system.webServer>
+              <handlers>
+                <add name="httpPlatformHandler" path="*" verb="*" modules="httpPlatformHandler" resourceType="Unspecified" />
+              </handlers>
+              <httpPlatform
+                processPath="$python"
+                arguments="-m uvicorn app.main:app --host 127.0.0.1 --port %HTTP_PLATFORM_PORT%"
+                stdoutLogEnabled="true"
+                stdoutLogFile="$stdout"
+                startupTimeLimit="120"
+                startupRetryCount="10"
+                processesPerApplication="1">
+                <environmentVariables>
+                  <environmentVariable name="PYTHONPATH" value="$backend" />
+                </environmentVariables>
+              </httpPlatform>
+            </system.webServer>
+          </configuration>
+          "@ | Set-Content -Path web.config -Encoding UTF8
+
+      - name: Restart IIS
+        shell: pwsh
+        run: iisreset /restart
+
+      - name: Health check
+        shell: pwsh
+        run: |
+          Start-Sleep -Seconds 5
+          $r = Invoke-WebRequest -Uri "http://127.0.0.1:8010/health" -UseBasicParsing -TimeoutSec 30
+          Write-Host $r.Content
+          if ($r.Content -notmatch "ok") { throw "Health check failed" }

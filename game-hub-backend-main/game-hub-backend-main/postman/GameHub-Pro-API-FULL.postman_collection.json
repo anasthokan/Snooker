@@ -1,0 +1,658 @@
+{
+	"info": {
+		"_postman_id": "gamehub-pro-api-v2",
+		"name": "GameHub Pro API (v2)",
+		"description": "GameHub Pro backend – updated for:\n\n**New / updated endpoints:**\n• **Auth:** GET /auth/features – role-based features (hide Dashboard/Reports/Role management for Cashier to avoid 403)\n• **Games:** GET /games/units?available_only=true – only available units for \"Select available unit\" dropdown\n• **Games:** DELETE /games/units/{unit_id} – remove game unit (soft-delete)\n• **Products:** PATCH /products/{product_id} – edit canteen product\n• **Sessions:** GET /sessions/{session_id} – returns session with **players** and **orders** (canteen saved when going back)\n• **Billing:** POST /billing/calculate – default **15% VAT** (vat_percent optional, default 15)\n\n**Bugs addressed:**\n• Starting session on occupied unit → 400 Bad Request (use available_only=true to avoid showing occupied units)\n• Session canteen orders now included in session detail so they persist when returning to session\n• Cashier: use /auth/features to hide tabs that return 403 (reports, dashboard, role_management)\n\n**Run app with:** `uvicorn app.main_2:app`",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{ "key": "token", "value": "{{access_token}}", "type": "string" }
+		]
+	},
+	"variable": [
+		{ "key": "base_url", "value": "http://localhost:8000" },
+		{ "key": "access_token", "value": "" },
+		{ "key": "tenant_id", "value": "" }
+	],
+	"item": [
+		{
+			"name": "Auth",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@gamehub.local\",\n  \"password\": \"your_password\"\n}"
+						},
+						"url": "{{base_url}}/auth/login",
+						"description": "Returns access_token and refresh_token. Token is auto-saved to environment when tests run.",
+						"event": [
+							{
+								"listen": "test",
+								"script": {
+									"exec": [
+										"var j = pm.response.json();",
+										"if (j.data && j.data.access_token) {",
+										"  pm.environment.set('access_token', j.data.access_token);",
+										"  if (j.data.refresh_token) pm.environment.set('refresh_token', j.data.refresh_token);",
+										"}"
+									],
+									"type": "text/javascript"
+								}
+							}
+						]
+					}
+				},
+				{
+					"name": "Refresh token",
+					"request": {
+						"auth": { "type": "noauth" },
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+						},
+						"url": "{{base_url}}/auth/refresh",
+						"description": "Get new access token using refresh token."
+					}
+				},
+				{
+					"name": "Get features (by role)",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/auth/features",
+						"description": "Returns what the current user can access (reports, dashboard, role_management, etc.). Cashier gets false for reports/dashboard/role_management – use in UI to hide those tabs and avoid 403."
+					}
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/auth/logout",
+						"description": "Client should discard stored tokens."
+					}
+				}
+			]
+		},
+		{
+			"name": "Games",
+			"item": [
+				{
+					"name": "Create game type",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"PC\",\n  \"billing_type\": \"hourly\",\n  \"icon\": null,\n  \"status\": \"active\"\n}"
+						},
+						"url": "{{base_url}}/games/types"
+					}
+				},
+				{
+					"name": "List game types",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/games/types?skip=0&limit=100"
+					}
+				},
+				{
+					"name": "Get game type",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/games/types/1"
+					}
+				},
+				{
+					"name": "Update game type",
+					"request": {
+						"method": "PATCH",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"PC Gaming\",\n  \"billing_type\": \"hourly\",\n  \"status\": \"active\"\n}"
+						},
+						"url": "{{base_url}}/games/types/1"
+					}
+				},
+				{
+					"name": "Create game unit",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"game_type_id\": 1,\n  \"unit_name\": \"Seat 1\",\n  \"weekday_price\": 50,\n  \"weekend_price\": 70,\n  \"status\": \"active\"\n}"
+						},
+						"url": "{{base_url}}/games/units"
+					}
+				},
+				{
+					"name": "List game units (all)",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/games/units?skip=0&limit=100",
+						"description": "All units for the tenant."
+					}
+				},
+				{
+					"name": "List game units (available only)",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/games/units?available_only=true&skip=0&limit=100",
+						"description": "Use for 'Select available unit' dropdown – excludes occupied units. Prevents user from selecting an occupied unit (which would return 400 on session start)."
+					}
+				},
+				{
+					"name": "Get game unit",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/games/units/1"
+					}
+				},
+				{
+					"name": "Update game unit",
+					"request": {
+						"method": "PATCH",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"unit_name\": \"Seat 1 Updated\",\n  \"weekday_price\": 55,\n  \"status\": \"active\"\n}"
+						},
+						"url": "{{base_url}}/games/units/1"
+					}
+				},
+				{
+					"name": "Delete game unit",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/games/units/1",
+						"description": "Remove game unit (soft-delete: sets status to disabled)."
+					}
+				}
+			]
+		},
+		{
+			"name": "Sessions",
+			"item": [
+				{
+					"name": "List sessions",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/sessions?status=active&skip=0&limit=100"
+					}
+				},
+				{
+					"name": "Start session",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"game_type_id\": 1,\n  \"game_unit_id\": 1\n}"
+						},
+						"url": "{{base_url}}/sessions/start",
+						"description": "If game_unit_id is occupied, returns 400 Bad Request. Use GET /games/units?available_only=true to only show available units."
+					}
+				},
+				{
+					"name": "Start session with players",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"game_type_id\": 1,\n  \"game_unit_id\": 1,\n  \"players\": [\n    { \"name\": \"John\", \"mobile\": \"+1234567890\", \"membership_id\": null }\n  ]\n}"
+						},
+						"url": "{{base_url}}/sessions/start-with-players"
+					}
+				},
+				{
+					"name": "Get session (with orders)",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/sessions/1",
+						"description": "Returns session with players and orders (canteen). Use when user goes back to session – canteen items are saved."
+					}
+				},
+				{
+					"name": "Pause session",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": { "mode": "raw", "raw": "{\n  \"session_id\": 1\n}" },
+						"url": "{{base_url}}/sessions/pause"
+					}
+				},
+				{
+					"name": "Resume session",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": { "mode": "raw", "raw": "{\n  \"session_id\": 1\n}" },
+						"url": "{{base_url}}/sessions/resume"
+					}
+				},
+				{
+					"name": "End session",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": { "mode": "raw", "raw": "{\n  \"session_id\": 1\n}" },
+						"url": "{{base_url}}/sessions/end"
+					}
+				},
+				{
+					"name": "Add player to session",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": 1,\n  \"name\": \"Jane\",\n  \"mobile\": \"+9876543210\",\n  \"membership_id\": null\n}"
+						},
+						"url": "{{base_url}}/sessions/players"
+					}
+				}
+			]
+		},
+		{
+			"name": "Shifts",
+			"item": [
+				{
+					"name": "Start shift",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/shifts/start",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"description": "Start a new shift for the current cashier. Fails with 400 if an active shift already exists."
+					}
+				},
+				{
+					"name": "Get current shift",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/shifts/current",
+						"description": "Returns the active shift for the current user, or null."
+					}
+				},
+				{
+					"name": "List shifts",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "{{base_url}}/shifts?status=active&skip=0&limit=100",
+							"host": ["{{base_url}}"],
+							"path": ["shifts"],
+							"query": [
+								{ "key": "user_id", "value": "", "disabled": true },
+								{ "key": "status", "value": "active" },
+								{ "key": "skip", "value": "0" },
+								{ "key": "limit", "value": "100" }
+							]
+						},
+						"description": "List shifts for the tenant, optionally filtered by user_id and status."
+					}
+				},
+				{
+					"name": "Close shift",
+					"request": {
+						"method": "POST",
+						"url": "{{base_url}}/shifts/close",
+						"header": [
+							{ "key": "Content-Type", "value": "application/json" }
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"shift_id\": 1\n}"
+						},
+						"description": "Close the given shift (must belong to current tenant)."
+					}
+				}
+			]
+		},
+		{
+			"name": "Products (Canteen)",
+			"item": [
+				{
+					"name": "Create product",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Cold Drink\",\n  \"price\": 20,\n  \"category\": \"Beverages\",\n  \"status\": \"active\"\n}"
+						},
+						"url": "{{base_url}}/products"
+					}
+				},
+				{
+					"name": "List products",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/products?skip=0&limit=100"
+					}
+				},
+				{
+					"name": "Get product",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/products/1"
+					}
+				},
+				{
+					"name": "Edit product (PATCH)",
+					"request": {
+						"method": "PATCH",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Cold Drink Large\",\n  \"price\": 25,\n  \"category\": \"Beverages\",\n  \"status\": \"active\"\n}"
+						},
+						"url": "{{base_url}}/products/1",
+						"description": "Edit canteen product. All fields optional."
+					}
+				}
+			]
+		},
+		{
+			"name": "Orders",
+			"item": [
+				{
+					"name": "Create order",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": 1,\n  \"player_id\": 1,\n  \"product_id\": 1,\n  \"quantity\": 2,\n  \"price\": null\n}"
+						},
+						"url": "{{base_url}}/orders"
+					}
+				},
+				{
+					"name": "Get orders by session",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/orders/session/1"
+					}
+				},
+				{
+					"name": "Delete order",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/orders/1"
+					}
+				}
+			]
+		},
+		{
+			"name": "Billing",
+			"item": [
+				{
+					"name": "Calculate bill (15% VAT default)",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": 1,\n  \"vat_percent\": 15,\n  \"discount_amount\": 0\n}"
+						},
+						"url": "{{base_url}}/billing/calculate",
+						"description": "Default vat_percent is 15%. Optional: pass vat_percent and discount_amount. Returns breakdown (subtotal, vat_amount, total, duration_seconds, rate_used)."
+					}
+				}
+			]
+		},
+		{
+			"name": "Payments",
+			"item": [
+				{
+					"name": "Create payment",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": 1,\n  \"amount\": 150,\n  \"method\": \"cash\",\n  \"status\": \"completed\"\n}"
+						},
+						"url": "{{base_url}}/payments"
+					}
+				},
+				{
+					"name": "Split payment",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"session_id\": 1,\n  \"payments\": [\n    { \"amount\": 100, \"method\": \"cash\", \"status\": \"completed\" },\n    { \"amount\": 50, \"method\": \"card\", \"status\": \"completed\" }\n  ]\n}"
+						},
+						"url": "{{base_url}}/payments/split"
+					}
+				},
+				{
+					"name": "Get payments by session",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/payments/session/1"
+					}
+				}
+			]
+		},
+		{
+			"name": "Profile",
+			"item": [
+				{
+					"name": "Get me",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/profile/me"
+					}
+				},
+				{
+					"name": "Update me",
+					"request": {
+						"method": "PATCH",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": { "mode": "raw", "raw": "{\n  \"display_name\": \"John\",\n  \"mobile\": \"+1234567890\"\n}" },
+						"url": "{{base_url}}/profile/me"
+					}
+				}
+			]
+		},
+		{
+			"name": "Categories",
+			"item": [
+				{ "name": "List categories", "request": { "method": "GET", "url": "{{base_url}}/categories" } },
+				{
+					"name": "Create category",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": { "mode": "raw", "raw": "{\n  \"name\": \"Beverages\"\n}" },
+						"url": "{{base_url}}/categories"
+					}
+				},
+				{ "name": "Get category", "request": { "method": "GET", "url": "{{base_url}}/categories/1" } },
+				{
+					"name": "Update category",
+					"request": {
+						"method": "PATCH",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": { "mode": "raw", "raw": "{\n  \"name\": \"Drinks\"\n}" },
+						"url": "{{base_url}}/categories/1"
+					}
+				},
+				{ "name": "Delete category", "request": { "method": "DELETE", "url": "{{base_url}}/categories/1" } }
+			]
+		},
+		{
+			"name": "Dashboard",
+			"item": [
+				{
+					"name": "Overview",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/dashboard/overview",
+						"description": "Manager+ only. Cashier gets 403 – hide via /auth/features."
+					}
+				}
+			]
+		},
+		{
+			"name": "Reports",
+			"item": [
+				{
+					"name": "Revenue",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/reports/revenue",
+						"description": "Manager+ only. Cashier gets 403."
+					}
+				},
+				{
+					"name": "Utilization",
+					"request": { "method": "GET", "url": "{{base_url}}/reports/utilization" }
+				},
+				{
+					"name": "Player spend",
+					"request": { "method": "GET", "url": "{{base_url}}/reports/player-spend" }
+				},
+				{
+					"name": "Revenue by game type",
+					"request": { "method": "GET", "url": "{{base_url}}/reports/revenue-by-game-type" }
+				},
+				{
+					"name": "Revenue by hour",
+					"request": { "method": "GET", "url": "{{base_url}}/reports/revenue-by-hour" }
+				}
+			]
+		},
+		{
+			"name": "Users",
+			"item": [
+				{ "name": "List roles", "request": { "method": "GET", "url": "{{base_url}}/users/roles" } },
+				{ "name": "List users", "request": { "method": "GET", "url": "{{base_url}}/users" } },
+				{
+					"name": "Create user",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": { "mode": "raw", "raw": "{\n  \"email\": \"cashier@gamehub.local\",\n  \"password\": \"secret\",\n  \"role_id\": 2,\n  \"display_name\": \"Cashier One\"\n}" },
+						"url": "{{base_url}}/users"
+					}
+				},
+				{ "name": "Get user", "request": { "method": "GET", "url": "{{base_url}}/users/1" } },
+				{
+					"name": "Update user",
+					"request": {
+						"method": "PATCH",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": { "mode": "raw", "raw": "{\n  \"display_name\": \"Updated Name\",\n  \"role_id\": 2\n}" },
+						"url": "{{base_url}}/users/1"
+					}
+				}
+			]
+		},
+		{
+			"name": "Customers",
+			"item": [
+				{
+					"name": "Create customer",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"mobile\": \"9876543210\",\n  \"membership_id\": \"M001\"\n}"
+						},
+						"url": "{{base_url}}/customers"
+					}
+				},
+				{
+					"name": "List customers",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/customers?skip=0&limit=20"
+					}
+				},
+				{
+					"name": "Get customer",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/customers/1"
+					}
+				},
+				{
+					"name": "Update customer",
+					"request": {
+						"method": "PUT",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"John Updated\",\n  \"email\": \"john.updated@example.com\",\n  \"mobile\": \"9999999999\",\n  \"membership_id\": \"M002\"\n}"
+						},
+						"url": "{{base_url}}/customers/1"
+					}
+				},
+				{
+					"name": "Soft delete customer",
+					"request": {
+						"method": "DELETE",
+						"url": "{{base_url}}/customers/1"
+					}
+				}
+			]
+		},
+		{
+			"name": "Tenants",
+			"item": [
+				{
+					"name": "Create tenant",
+					"request": {
+						"method": "POST",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": { "mode": "raw", "raw": "{\n  \"name\": \"New Parlour\",\n  \"slug\": \"new-parlour\"\n}" },
+						"url": "{{base_url}}/tenants"
+					}
+				},
+				{ "name": "List tenants", "request": { "method": "GET", "url": "{{base_url}}/tenants" } },
+				{ "name": "Get tenant", "request": { "method": "GET", "url": "{{base_url}}/tenants/1" } },
+				{
+					"name": "Update tenant",
+					"request": {
+						"method": "PATCH",
+						"header": [{"key": "Content-Type", "value": "application/json"}],
+						"body": { "mode": "raw", "raw": "{\n  \"name\": \"Updated Parlour\"\n}" },
+						"url": "{{base_url}}/tenants/1"
+					}
+				}
+			]
+		},
+		{
+			"name": "Health",
+			"item": [
+				{
+					"name": "Health check",
+					"request": {
+						"method": "GET",
+						"url": "{{base_url}}/health",
+						"auth": { "type": "noauth" },
+						"description": "No auth required."
+					}
+				}
+			]
+		}
+	]
+}
+

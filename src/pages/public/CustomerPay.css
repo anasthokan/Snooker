@@ -1,0 +1,72 @@
+.customer-pay-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: linear-gradient(145deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+}
+
+.customer-pay-card {
+  width: 100%;
+  max-width: 440px;
+  background: var(--card-bg, #fff);
+  border-radius: 16px;
+  padding: 1.75rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+}
+
+.customer-pay-brand {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.customer-pay-brand span {
+  font-size: 2.5rem;
+}
+
+.customer-pay-brand h1 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.customer-pay-brand p {
+  margin: 0.25rem 0 0;
+  color: var(--text-secondary, #64748b);
+  font-size: 0.9rem;
+}
+
+.customer-pay-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  font-size: 0.9rem;
+}
+
+.customer-pay-btn {
+  width: 100%;
+  margin-top: 0.5rem;
+}
+
+.customer-pay-summary {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  background: var(--bg-secondary, #f8fafc);
+  border-radius: 10px;
+}
+
+.customer-pay-due {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #b91c1c;
+  margin: 0.5rem 0 0;
+}
+
+.moyasar-form-wrap {
+  margin-top: 1.25rem;
+  min-height: 120px;
+}

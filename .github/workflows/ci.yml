@@ -1,0 +1,60 @@
+name: CI - Build & Test
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck & build
+        run: npm run build
+
+  backend:
+    name: Backend verify
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: game-hub-backend-main/game-hub-backend-main
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: game-hub-backend-main/game-hub-backend-main/requirements.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install reportlab
+
+      - name: Verify app imports
+        run: python -c "from app.main import app; print('OK:', app.title)"
+
+      - name: Compile Python sources
+        run: python -m compileall app -q
