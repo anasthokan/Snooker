@@ -115,7 +115,7 @@ export default function KeepTournamentGoing() {
           <p className="tournament-hint" style={{ marginBottom: '1rem' }}>
             {mode === 'single'
               ? 'Each player is one team (1 vs 1 matches).'
-              : 'Players 1 & 2 are one team, 3 & 4 the next, and so on (e.g. Player1 & Player2 vs Player3 & Player4).'}
+              : 'Every two players form one team (e.g. Player1 & Player2 vs Player3 & Player4).'}
           </p>
 
           <div className="form-group">
