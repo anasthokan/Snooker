@@ -1,0 +1,137 @@
+.tournament-setup-card {
+  max-width: 640px;
+}
+
+.tournament-mode-toggle {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.tournament-mode-toggle .btn {
+  flex: 1;
+  min-width: 140px;
+}
+
+.tournament-names-input {
+  min-height: 200px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.tournament-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.tournament-now-playing {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-dim);
+}
+
+.tournament-now-playing h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tournament-matchup {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 1.35rem;
+  font-weight: 700;
+  margin: 0.75rem 0 1rem;
+}
+
+.tournament-vs {
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 1rem;
+}
+
+.tournament-winner-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tournament-rounds {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.tournament-round-title {
+  margin: 0 0 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.tournament-match-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tournament-match-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  flex-wrap: wrap;
+}
+
+.tournament-match-row--current {
+  border-color: var(--accent);
+  background: var(--bg-tertiary);
+}
+
+.tournament-match-row--done {
+  opacity: 0.75;
+}
+
+.tournament-match-label {
+  font-weight: 500;
+}
+
+.tournament-match-winner {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.tournament-champion {
+  text-align: center;
+  padding: 2rem 1rem;
+}
+
+.tournament-champion-name {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0.5rem 0 0;
+  color: var(--accent);
+}
+
+.tournament-toolbar {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.25rem;
+}
+
+.tournament-match-row .btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+}

@@ -94,8 +94,8 @@ export default function TableFloor() {
   const [playerName, setPlayerName] = useState('');
   const [starting, setStarting] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (background = false) => {
+    if (!background) setLoading(true);
     setError('');
     try {
       const [typesRes, unitsRes, sessionsRes] = await Promise.all([
@@ -118,8 +118,8 @@ export default function TableFloor() {
   }, []);
 
   useEffect(() => {
-    load();
-    const interval = setInterval(load, 30000);
+    load(false);
+    const interval = setInterval(() => load(true), 30000);
     return () => clearInterval(interval);
   }, [load]);
 

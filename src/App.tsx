@@ -10,6 +10,7 @@ import TenantsList from './pages/superadmin/TenantsList';
 import Plans from './pages/superadmin/Plans';
 import SystemMetrics from './pages/superadmin/SystemMetrics';
 import TableFloor from './pages/tenant/TableFloor';
+import KeepTournamentGoing from './pages/tenant/KeepTournamentGoing';
 import TenantOverview from './pages/tenant/TenantOverview';
 import GameTypes from './pages/tenant/GameTypes';
 import GameUnits from './pages/tenant/GameUnits';
@@ -214,6 +215,16 @@ export default function App() {
               <ProtectedRoute allowedRoles={['tenant_owner', 'manager', 'cashier']}>
                 <AppLayout>
                   <StartGame />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tenant/tournament"
+            element={
+              <ProtectedRoute allowedRoles={['tenant_owner', 'manager', 'cashier']}>
+                <AppLayout>
+                  <KeepTournamentGoing />
                 </AppLayout>
               </ProtectedRoute>
             }

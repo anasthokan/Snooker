@@ -2,13 +2,15 @@ pipeline {
     agent any
 
     environment {
-        DEPLOY_ROOT     = 'C:\\Projects\\GameHub-Developer-Package'
-        BACKEND_DIR     = 'C:\\Projects\\GameHub-Developer-Package\\game-hub-backend-main\\game-hub-backend-main'
-        NODE_VERSION    = '20'
+        DEPLOY_ROOT      = 'C:\\Projects\\GameHub-Developer-Package'
+        BACKEND_DIR      = 'C:\\Projects\\GameHub-Developer-Package\\game-hub-backend-main\\game-hub-backend-main'
+        FRONTEND_DIR     = 'C:\\Projects\\Snooker-Frontend'
+        API_URL          = 'https://snooker-apis.atozeesolutions.com'
+        FRONTEND_URL     = 'https://snooker.atozeesolutions.com'
     }
 
     triggers {
-        pollSCM('H/5 * * * *')  // check GitHub every 5 min; replace with webhook if configured
+        pollSCM('H/5 * * * *')
     }
 
     stages {
@@ -20,18 +22,27 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
+                bat 'call npm ci && call npm run build:split'
+            }
+        }
+
+        stage('Deploy Backend') {
+            steps {
                 bat '''
-                    call npm ci
-                    call npm run build
+                    robocopy . "%DEPLOY_ROOT%" /E /XD node_modules .git __pycache__ .pytest_cache .venv .vite .vite-temp dist /XF .env .env.* *.zip /NFL /NDL /NJH /NJS
+                    if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
+                    exit /b 0
                 '''
             }
         }
 
-        stage('Deploy Files') {
+        stage('Deploy Frontend') {
             steps {
                 bat '''
-                    robocopy . "%DEPLOY_ROOT%" /E /XD node_modules .git __pycache__ .pytest_cache .venv .vite .vite-temp /XF .env .env.* *.zip /NFL /NDL /NJH /NJS
+                    if not exist "%FRONTEND_DIR%" mkdir "%FRONTEND_DIR%"
+                    robocopy dist "%FRONTEND_DIR%" /E /NFL /NDL /NJH /NJS
                     if %ERRORLEVEL% GEQ 8 exit /b %ERRORLEVEL%
+                    copy /Y deploy\\frontend-web.config "%FRONTEND_DIR%\\web.config"
                     exit /b 0
                 '''
             }
@@ -68,7 +79,7 @@ pipeline {
             steps {
                 bat '''
                     ping 127.0.0.1 -n 6 > nul
-                    powershell -Command "$r = Invoke-WebRequest -Uri 'http://127.0.0.1:8010/health' -UseBasicParsing -TimeoutSec 30; Write-Host $r.Content; if ($r.Content -notmatch 'ok') { exit 1 }"
+                    powershell -Command "$h='http://snooker-apis.atozeesolutions.com/health'; try { $r=Invoke-WebRequest -Uri $h -UseBasicParsing -TimeoutSec 30; Write-Host $r.Content } catch { Write-Host 'DNS/HTTPS not ready - trying localhost'; $r=Invoke-WebRequest -Uri 'http://127.0.0.1/health' -Headers @{Host='snooker-apis.atozeesolutions.com'} -UseBasicParsing -TimeoutSec 30; Write-Host $r.Content }"
                 '''
             }
         }
@@ -76,7 +87,8 @@ pipeline {
 
     post {
         success {
-            echo 'Deploy OK: http://74.208.184.175:8010'
+            echo "Deploy OK: ${env.FRONTEND_URL}"
+            echo "API:       ${env.API_URL}"
         }
         failure {
             echo 'Deploy failed. Check Jenkins console log.'

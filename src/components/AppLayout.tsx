@@ -21,6 +21,7 @@ const tenantNavAll = [
   { to: '/tenant/customers', label: 'Customers' },
   { to: '/tenant/customer-accounts', label: 'Customer Accounts' },
   { to: '/tenant/start-game', label: 'Start Game' },
+  { to: '/tenant/tournament', label: 'Keep Tournament Going' },
   { to: '/tenant/sessions', label: 'Active Sessions' },
   { to: '/tenant/completed-sessions', label: 'Completed Sessions' },
   { to: '/tenant/reports', label: 'Reports', feature: 'reports' as const },
