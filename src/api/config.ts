@@ -1,10 +1,25 @@
-// Dev: /api proxy. Production build served from FastAPI: same-origin (empty string).
-export const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL !== undefined && import.meta.env.VITE_API_BASE_URL !== ''
-    ? import.meta.env.VITE_API_BASE_URL
-    : import.meta.env.DEV
-      ? '/api'
-      : '';
+// Dev: /api proxy. Combined FastAPI+SPA: same-origin (empty string).
+// Split IIS deploy (frontend domain != API): map host or set VITE_API_BASE_URL at build.
+const SPLIT_API_BY_HOST: Record<string, string> = {
+  'snooker.atozeesolutions.com': 'https://snooker-apis.atozeesolutions.com',
+};
+
+function resolveApiBaseUrl(): string {
+  const fromEnv = import.meta.env.VITE_API_BASE_URL;
+  if (typeof fromEnv === 'string' && fromEnv.length > 0) {
+    return fromEnv;
+  }
+  if (import.meta.env.DEV) {
+    return '/api';
+  }
+  if (typeof window !== 'undefined') {
+    const mapped = SPLIT_API_BY_HOST[window.location.hostname];
+    if (mapped) return mapped;
+  }
+  return '';
+}
+
+export const API_BASE_URL = resolveApiBaseUrl();
 
 export const getAccessToken = (): string | null =>
   sessionStorage.getItem('gamehub_access_token');

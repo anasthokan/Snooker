@@ -12,7 +12,7 @@ param(
     [string]$SourceRoot = "",
     [string]$FrontendDeployPath = "C:\inetpub\wwwroot\GameHub",
     [string]$BackendDeployPath = "C:\Projects\game-hub-backend-main\game-hub-backend-main",
-    [string]$ApiUrl = "",
+    [string]$ApiUrl = "https://snooker-apis.atozeesolutions.com",
     [switch]$SkipBuild,
     [switch]$SkipIisReset
 )
@@ -69,6 +69,14 @@ if (-not $SkipBuild) {
     }
 } else {
     Write-Host "`n[1/6] Skipping frontend build (-SkipBuild)" -ForegroundColor Yellow
+}
+
+# Enable IIS ARR reverse proxy (frontend web.config forwards /auth/* to API host)
+try {
+    Import-Module WebAdministration -ErrorAction SilentlyContinue
+    Set-WebConfigurationProperty -pspath 'MACHINE/WEBROOT/APPHOST' -filter "system.webServer/proxy" -name "enabled" -value "True" -ErrorAction SilentlyContinue
+} catch {
+    Write-Host "WARN: Enable ARR proxy manually if API proxy rules fail." -ForegroundColor Yellow
 }
 
 # --- Deploy frontend to IIS wwwroot ---

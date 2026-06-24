@@ -22,7 +22,11 @@ pipeline {
 
         stage('Build Frontend') {
             steps {
-                bat 'call npm ci && call npm run build:split'
+                bat '''
+                    call npm ci
+                    set VITE_API_BASE_URL=%API_URL%
+                    call npm run build:split
+                '''
             }
         }
 
