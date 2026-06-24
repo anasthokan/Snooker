@@ -1,5 +1,29 @@
 # Server Deploy — Frontend + Backend
 
+> **Important:** GitHub par `git push` sirf code online save karta hai.  
+> Server par **modified date tabhi change hogi** jab aap RDP par deploy script chalayenge.  
+> Abhi `C:\Projects\game-hub-backend-main\...` purana code hai (6/22–6/23) — neeche wala step server par run karein.
+
+## Sab se aasaan — ek command (RDP server par)
+
+PowerShell **as Administrator** open karein, copy-paste karein:
+
+```powershell
+powershell -ExecutionPolicy Bypass -Command "iwr -UseBasicParsing https://raw.githubusercontent.com/anasthokan/Snooker/main/scripts/update-server-from-github.ps1 -OutFile C:\Projects\update-server-from-github.ps1; & C:\Projects\update-server-from-github.ps1"
+```
+
+Ya agar pehle se repo clone hai:
+
+```powershell
+cd C:\Projects\Snooker
+git pull
+.\scripts\deploy-server-iis.ps1
+```
+
+Double-click: `scripts\DEPLOY_SERVER.bat` (repo folder ke andar se)
+
+---
+
 Aapke server par yeh paths hain:
 
 | Part | Path |
