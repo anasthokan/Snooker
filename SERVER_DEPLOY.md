@@ -1,8 +1,55 @@
 # Server Deploy — Frontend + Backend
 
-> **Important:** GitHub par `git push` sirf code online save karta hai.  
-> Server par **modified date tabhi change hogi** jab aap RDP par deploy script chalayenge.  
-> Abhi `C:\Projects\game-hub-backend-main\...` purana code hai (6/22–6/23) — neeche wala step server par run karein.
+Production paths (IIS server):
+
+| Part | Path |
+|------|------|
+| **Frontend** | `C:\inetpub\wwwroot\GameHub` |
+| **Backend** | `C:\Projects\game-hub-backend-main\game-hub-backend-main` |
+| **Live site** | https://snooker.atozeesolutions.com |
+| **API** | https://snooker-apis.atozeesolutions.com |
+
+---
+
+## CI/CD — GitHub Actions (recommended)
+
+Har `main` branch push par auto-deploy (jab self-hosted runner server par chal raha ho).
+
+### Pehli baar — runner install (RDP, Admin PowerShell)
+
+1. GitHub → **anasthokan/Snooker** → Settings → Actions → Runners → **New self-hosted runner** → Windows
+2. Token copy karein
+3. Server par:
+
+```powershell
+cd C:\Projects\Snooker
+git pull
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-github-actions-runner.ps1 -RegistrationToken "YOUR_TOKEN_HERE"
+```
+
+4. GitHub → Runners mein **Idle** dikhe to ready hai
+
+### Deploy kaise trigger hota hai
+
+- `git push origin main` → workflow **CD - Deploy to Production IIS** chalega
+- Ya GitHub → Actions → workflow → **Run workflow** (manual)
+
+Workflow yeh karta hai (`scripts/deploy-server-iis.ps1`):
+
+1. `npm run build:split` → `dist\`
+2. `dist\` → `C:\inetpub\wwwroot\GameHub`
+3. Backend → `C:\Projects\game-hub-backend-main\...` (`.env` safe)
+4. `pip install` + `alembic upgrade head`
+5. `iisreset /restart`
+6. Health check API + frontend
+
+### Jenkins (alternative)
+
+`Jenkinsfile` same deploy script use karta hai. Job har ~5 min poll karta hai ya webhook se instant.
+
+---
+
+## Manual deploy (agar CI/CD na ho)
 
 ## Sab se aasaan — ek command (RDP server par)
 

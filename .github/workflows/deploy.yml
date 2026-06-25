@@ -1,109 +1,82 @@
-name: CD - Deploy to IIS
+name: CD - Deploy to Production IIS
 
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      skip_build:
+        description: Skip frontend npm build (use existing dist)
+        required: false
+        default: false
+        type: boolean
+      skip_iis_reset:
+        description: Skip iisreset after deploy
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: deploy-production
   cancel-in-progress: false
 
 env:
-  DEPLOY_ROOT: C:\Projects\GameHub-Developer-Package
-  BACKEND_DIR: C:\Projects\GameHub-Developer-Package\game-hub-backend-main\game-hub-backend-main
-  IIS_SITE: GameHubPro
+  FRONTEND_PATH: C:\inetpub\wwwroot\GameHub
+  BACKEND_PATH: C:\Projects\game-hub-backend-main\game-hub-backend-main
+  API_URL: https://snooker-apis.atozeesolutions.com
+  FRONTEND_URL: https://snooker.atozeesolutions.com
 
 jobs:
   deploy:
-    name: Deploy to Windows IIS
-    runs-on: self-hosted
+    name: Deploy frontend + backend
+    runs-on: [self-hosted, Windows]
+    timeout-minutes: 30
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      - name: Build frontend
+      - name: Verify deploy paths
         shell: pwsh
         run: |
-          npm ci
-          npm run build
-
-      - name: Sync files to deploy folder
-        shell: pwsh
-        run: |
-          $src = $env:GITHUB_WORKSPACE
-          $dest = $env:DEPLOY_ROOT
-          if (-not (Test-Path $dest)) {
-            New-Item -ItemType Directory -Path $dest -Force | Out-Null
+          Write-Host "Frontend deploy: $env:FRONTEND_PATH"
+          Write-Host "Backend deploy:  $env:BACKEND_PATH"
+          foreach ($tool in @('npm', 'python', 'git')) {
+            if (-not (Get-Command $tool -ErrorAction SilentlyContinue)) {
+              throw "$tool is not installed on this runner."
+            }
           }
-          robocopy $src $dest /E `
-            /XD node_modules .git __pycache__ .pytest_cache .venv .vite .vite-temp `
-            /XF .env .env.* *.zip `
-            /NFL /NDL /NJH /NJS
-          if ($LASTEXITCODE -ge 8) { exit $LASTEXITCODE }
-          exit 0
 
-      - name: Install Python dependencies
+      - name: Deploy to IIS
         shell: pwsh
-        working-directory: ${{ env.BACKEND_DIR }}
         run: |
-          if (-not (Test-Path .venv\Scripts\python.exe)) {
-            python -m venv .venv
+          $script = Join-Path $env:GITHUB_WORKSPACE "scripts\deploy-server-iis.ps1"
+          if (-not (Test-Path $script)) { throw "Deploy script not found: $script" }
+
+          $args = @{
+            SourceRoot         = $env:GITHUB_WORKSPACE
+            FrontendDeployPath = $env:FRONTEND_PATH
+            BackendDeployPath  = $env:BACKEND_PATH
+            ApiUrl             = $env:API_URL
           }
-          .\.venv\Scripts\python.exe -m pip install --upgrade pip
-          .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-          .\.venv\Scripts\python.exe -m pip install reportlab
+          if ('${{ inputs.skip_build }}' -eq 'true') { $args.SkipBuild = $true }
+          if ('${{ inputs.skip_iis_reset }}' -eq 'true') { $args.SkipIisReset = $true }
 
-      - name: Run database migrations
-        shell: pwsh
-        working-directory: ${{ env.BACKEND_DIR }}
-        run: .\.venv\Scripts\python.exe -m alembic upgrade head
-
-      - name: Update IIS web.config
-        shell: pwsh
-        working-directory: ${{ env.BACKEND_DIR }}
-        run: |
-          $python = (Resolve-Path .\.venv\Scripts\python.exe).Path -replace '\\', '\\'
-          $backend = (Resolve-Path .).Path -replace '\\', '\\'
-          $logDir = Join-Path (Resolve-Path .).Path "logs"
-          New-Item -ItemType Directory -Force -Path $logDir | Out-Null
-          $stdout = (Join-Path $logDir "iis-stdout") -replace '\\', '\\'
-          @"
-          <?xml version="1.0" encoding="utf-8"?>
-          <configuration>
-            <system.webServer>
-              <handlers>
-                <add name="httpPlatformHandler" path="*" verb="*" modules="httpPlatformHandler" resourceType="Unspecified" />
-              </handlers>
-              <httpPlatform
-                processPath="$python"
-                arguments="-m uvicorn app.main:app --host 127.0.0.1 --port %HTTP_PLATFORM_PORT%"
-                stdoutLogEnabled="true"
-                stdoutLogFile="$stdout"
-                startupTimeLimit="120"
-                startupRetryCount="10"
-                processesPerApplication="1">
-                <environmentVariables>
-                  <environmentVariable name="PYTHONPATH" value="$backend" />
-                </environmentVariables>
-              </httpPlatform>
-            </system.webServer>
-          </configuration>
-          "@ | Set-Content -Path web.config -Encoding UTF8
-
-      - name: Restart IIS
-        shell: pwsh
-        run: iisreset /restart
+          & $script @args
 
       - name: Health check
         shell: pwsh
         run: |
-          Start-Sleep -Seconds 5
-          $r = Invoke-WebRequest -Uri "http://127.0.0.1:8010/health" -UseBasicParsing -TimeoutSec 30
-          Write-Host $r.Content
-          if ($r.Content -notmatch "ok") { throw "Health check failed" }
+          Start-Sleep -Seconds 8
+          $healthUrl = "$env:API_URL/health"
+          Write-Host "Checking API: $healthUrl"
+          $health = Invoke-WebRequest -Uri $healthUrl -UseBasicParsing -TimeoutSec 60
+          Write-Host $health.Content
+          if ($health.Content -notmatch 'ok') { throw "API health check failed" }
+
+          Write-Host "Checking frontend: $env:FRONTEND_URL"
+          $fe = Invoke-WebRequest -Uri $env:FRONTEND_URL -UseBasicParsing -TimeoutSec 60
+          if ($fe.StatusCode -lt 200 -or $fe.StatusCode -ge 400) {
+            throw "Frontend returned HTTP $($fe.StatusCode)"
+          }
+          Write-Host "Deploy OK"
