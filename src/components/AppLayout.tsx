@@ -29,7 +29,7 @@ const tenantNavAll: TenantNavItem[] = [
   { to: '/tenant/customers', label: 'Customers' },
   { to: '/tenant/customer-accounts', label: 'Customer Accounts' },
   { to: '/tenant/start-game', label: 'Start Game' },
-  { to: '/tenant/tournament', label: 'Keep Tournament Going' },
+  { to: '/tenant/tournament', label: 'Tournaments' },
   { to: '/tenant/sessions', label: 'Active Sessions' },
   { to: '/tenant/completed-sessions', label: 'Completed Sessions' },
   { to: '/tenant/repayments', label: 'Bill Payment' },

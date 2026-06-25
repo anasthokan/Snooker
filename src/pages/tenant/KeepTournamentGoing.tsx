@@ -84,7 +84,7 @@ export default function KeepTournamentGoing() {
       <div>
         <div className="page-header">
           <div>
-            <h2>Keep Tournament Going</h2>
+            <h2>Tournaments</h2>
             <p className="tournament-hint">
               Enter player names, pick single or double, then draw random first-round matches.
               Winners advance round by round until one champion remains.
@@ -147,7 +147,7 @@ export default function KeepTournamentGoing() {
     <div>
       <div className="page-header">
         <div>
-          <h2>Keep Tournament Going</h2>
+          <h2>Tournaments</h2>
           <p className="tournament-hint">
             {tournament.mode === 'single' ? 'Single player' : 'Double player'} knockout ·{' '}
             {roundLabel(currentRound, totalRounds)}
