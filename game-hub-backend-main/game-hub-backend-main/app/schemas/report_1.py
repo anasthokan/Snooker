@@ -188,3 +188,51 @@ class ReportCollectiveResponse(BaseModel):
     top_game_units: list[dict]
     top_products: list[dict]
 
+
+class ProfitabilityDayItem(BaseModel):
+    date: date
+    revenue: Decimal
+
+
+class ProfitabilityDayRankedItem(BaseModel):
+    rank: int
+    date: date
+    revenue: Decimal
+
+
+class ProfitabilityWeekendDayItem(BaseModel):
+    day_name: str
+    weekday: int
+    revenue: Decimal
+
+
+class ProfitabilityCustomerItem(BaseModel):
+    rank: int
+    player_id: int
+    player_name: str
+    session_count: int
+    total_spend: Decimal
+    game_charge: Decimal
+    canteen_charge: Decimal
+
+
+class ProfitabilityCanteenProductItem(BaseModel):
+    product_id: int
+    product_name: str
+    quantity_sold: int
+    revenue: Decimal
+
+
+class ProfitabilityResponse(BaseModel):
+    start_date: date
+    end_date: date
+    total_revenue: Decimal
+    weekend_revenue: Decimal
+    canteen_revenue: Decimal
+    game_revenue: Decimal
+    revenue_by_day: list[ProfitabilityDayItem]
+    revenue_by_day_ranked: list[ProfitabilityDayRankedItem]
+    weekend_breakdown: list[ProfitabilityWeekendDayItem]
+    customers: list[ProfitabilityCustomerItem]
+    canteen_products: list[ProfitabilityCanteenProductItem]
+

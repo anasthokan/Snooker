@@ -1,0 +1,37 @@
+.reports-date-filter {
+  margin-bottom: 0;
+  width: 100%;
+}
+
+.reports-date-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 1rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.reports-date-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin: 0;
+}
+
+.reports-date-label {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.reports-date-field .filter-date {
+  min-width: 160px;
+  height: 2.5rem;
+}
+
+.reports-date-apply {
+  height: 2.5rem;
+  align-self: flex-end;
+}

@@ -299,6 +299,54 @@ export interface ReportRevenueByHourItem {
   value?: number;
 }
 
+export interface ProfitabilityDayItem {
+  date: string;
+  revenue: number;
+}
+
+export interface ProfitabilityDayRankedItem {
+  rank: number;
+  date: string;
+  revenue: number;
+}
+
+export interface ProfitabilityWeekendDayItem {
+  day_name: string;
+  weekday: number;
+  revenue: number;
+}
+
+export interface ProfitabilityCustomerItem {
+  rank: number;
+  player_id: number;
+  player_name: string;
+  session_count: number;
+  total_spend: number;
+  game_charge: number;
+  canteen_charge: number;
+}
+
+export interface ProfitabilityCanteenProductItem {
+  product_id: number;
+  product_name: string;
+  quantity_sold: number;
+  revenue: number;
+}
+
+export interface ProfitabilityResponse {
+  start_date: string;
+  end_date: string;
+  total_revenue: number;
+  weekend_revenue: number;
+  canteen_revenue: number;
+  game_revenue: number;
+  revenue_by_day: ProfitabilityDayItem[];
+  revenue_by_day_ranked: ProfitabilityDayRankedItem[];
+  weekend_breakdown: ProfitabilityWeekendDayItem[];
+  customers: ProfitabilityCustomerItem[];
+  canteen_products: ProfitabilityCanteenProductItem[];
+}
+
 export interface AIQuery extends ReportQuery {
   limit?: number;
 }
@@ -389,4 +437,31 @@ export interface DashboardOverviewResponse {
     top_game?: string;
     [key: string]: unknown;
   };
+}
+
+// —— Repayments ——
+export type RepaymentCategory = 'electricity' | 'rent' | 'salary' | 'maintenance' | 'other';
+
+export interface RepaymentItem {
+  id: number;
+  tenant_id: number;
+  category: RepaymentCategory;
+  amount: number;
+  paid_at: string;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface CreateRepaymentRequest {
+  category: RepaymentCategory;
+  amount: number;
+  paid_at: string;
+  notes?: string;
+}
+
+export interface UpdateRepaymentRequest {
+  category?: RepaymentCategory;
+  amount?: number;
+  paid_at?: string;
+  notes?: string;
 }

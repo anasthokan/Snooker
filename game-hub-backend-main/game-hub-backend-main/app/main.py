@@ -22,6 +22,7 @@ from app.api.products import router as products_router
 from app.api.customers import router as customers_router
 from app.api.customer_accounts import router as customer_accounts_router
 from app.api.reports import router as reports_router
+from app.api.repayments import router as repayments_router
 from app.api.public_payments import router as public_payments_router
 from app.api.customer_portal import router as customer_portal_router
 from app.api.profile import router as profile_router
@@ -81,6 +82,7 @@ app.include_router(customer_accounts_router)
 app.include_router(public_payments_router)
 app.include_router(customer_portal_router)
 app.include_router(reports_router)
+app.include_router(repayments_router)
 app.include_router(profile_router)
 app.include_router(ai_router)
 

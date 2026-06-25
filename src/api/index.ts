@@ -11,6 +11,7 @@ export * from './orders';
 export * from './billing';
 export * from './payments';
 export * from './reports';
+export * from './repayments';
 export * from './profile';
 export * from './categories';
 export * from './customers';

@@ -6,6 +6,7 @@ import type {
   ReportPlayerSpendResponse,
   ReportRevenueByGameTypeItem,
   ReportRevenueByHourItem,
+  ProfitabilityResponse,
 } from './types';
 
 function queryString(params: ReportQuery): string {
@@ -30,4 +31,8 @@ export async function getRevenueByGameType(params: ReportQuery) {
 
 export async function getRevenueByHour(params: ReportQuery) {
   return api.get<{ data?: ReportRevenueByHourItem[] }>(`/reports/revenue-by-hour${queryString(params)}`);
+}
+
+export async function getProfitability(params: ReportQuery) {
+  return api.get<{ data?: ProfitabilityResponse }>(`/reports/profitability${queryString(params)}`);
 }

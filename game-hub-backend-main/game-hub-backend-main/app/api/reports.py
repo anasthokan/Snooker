@@ -38,6 +38,12 @@ from app.schemas.report_1 import (
     TableUtilizationResponse,
     TopCanteenItem,
     TopCanteenItemsResponse,
+    ProfitabilityResponse,
+    ProfitabilityDayItem,
+    ProfitabilityDayRankedItem,
+    ProfitabilityWeekendDayItem,
+    ProfitabilityCustomerItem,
+    ProfitabilityCanteenProductItem,
 )
 from app.services.report_service import (
     revenue_report,
@@ -54,6 +60,7 @@ from app.services.report_service import (
     customer_credit_by_date_report,
     table_utilization_report,
     top_canteen_items_report,
+    profitability_report,
 )
 
 
@@ -314,4 +321,37 @@ def get_canteen_top_items_report(
     )
     data["items"] = [TopCanteenItem(**p) for p in data["items"]]
     return SuccessResponse(data=TopCanteenItemsResponse(**data))
+
+
+@router.get(
+    "/profitability",
+    response_model=SuccessResponse[ProfitabilityResponse],
+)
+def get_profitability_report(
+    start_date: date | None = Query(None),
+    end_date: date | None = Query(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Profitability: revenue per day, weekend (Thu–Sat), revenue by customer, canteen breakdown.
+    """
+    data = profitability_report(
+        db,
+        current_user.tenant_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
+    data["revenue_by_day"] = [ProfitabilityDayItem(**d) for d in data["revenue_by_day"]]
+    data["revenue_by_day_ranked"] = [
+        ProfitabilityDayRankedItem(**d) for d in data["revenue_by_day_ranked"]
+    ]
+    data["weekend_breakdown"] = [
+        ProfitabilityWeekendDayItem(**d) for d in data["weekend_breakdown"]
+    ]
+    data["customers"] = [ProfitabilityCustomerItem(**c) for c in data["customers"]]
+    data["canteen_products"] = [
+        ProfitabilityCanteenProductItem(**p) for p in data["canteen_products"]
+    ]
+    return SuccessResponse(data=ProfitabilityResponse(**data))
 

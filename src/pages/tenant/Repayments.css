@@ -1,0 +1,162 @@
+.repayments-page .repayments-subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.repayments-error {
+  margin-bottom: 1rem;
+}
+
+.repayments-filters {
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.25rem;
+}
+
+.repayments-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.repayments-filter-row label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  min-width: 10rem;
+}
+
+.repayments-filter-row input,
+.repayments-filter-row select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
+  transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.repayments-filter-row input:focus,
+.repayments-filter-row select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+
+.repayments-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.repayments-summary-card {
+  padding: 0.85rem 1rem;
+  min-width: 8.5rem;
+}
+
+.repayments-summary-label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.25rem;
+}
+
+.repayments-summary-value {
+  font-size: 1.15rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+}
+
+.repayment-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.repayment-badge--electricity {
+  background: rgba(59, 130, 246, 0.15);
+  color: #3b82f6;
+}
+
+.repayment-badge--rent {
+  background: rgba(168, 85, 247, 0.15);
+  color: #a855f7;
+}
+
+.repayment-badge--salary {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.repayment-badge--maintenance {
+  background: rgba(249, 115, 22, 0.15);
+  color: #f97316;
+}
+
+.repayment-badge--other {
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+}
+
+.repayments-empty {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 2rem !important;
+}
+
+.repayments-modal {
+  max-width: 440px;
+}
+
+.repayments-modal-close {
+  font-size: 1.5rem;
+  line-height: 1;
+  padding: 0.25rem 0.5rem;
+  min-width: unset;
+}
+
+.repayments-amount-input {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.repayments-amount-input img {
+  position: absolute;
+  left: 0.75rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.repayments-amount-input .form-input {
+  padding-left: 2.25rem;
+}
+
+.repayments-notes {
+  resize: vertical;
+  min-height: 5rem;
+}
+
+.repayments-optional {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+@media (max-width: 640px) {
+  .repayments-summary {
+    flex-direction: column;
+  }
+
+  .repayments-filter-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -15,6 +15,7 @@ from app.models.customer import Customer
 from app.models.customer_account import CustomerAccountEntry
 from app.models.gateway_payment import GatewayPayment
 from app.models.payment import Payment
+from app.models.repayment import Repayment
 from app.models.password_reset import PasswordResetToken
 
 __all__ = [
@@ -36,5 +37,6 @@ __all__ = [
     "CustomerAccountEntry",
     "GatewayPayment",
     "Payment",
+    "Repayment",
     "PasswordResetToken",
 ]

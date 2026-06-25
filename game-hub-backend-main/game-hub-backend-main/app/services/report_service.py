@@ -19,8 +19,63 @@ from app.models.game_unit import GameUnit
 from app.models.game_type import GameType
 from app.models.product import Product
 from app.models.payment import Payment
+from app.models.canteen_bill import CanteenBill, CanteenBillItem
 from app.services.session_engine import compute_duration_seconds
 from app.services.billing_service import calculate_bill, _get_rate_for_session
+
+
+WEEKEND_WEEKDAYS = {3: "Thursday", 4: "Friday", 5: "Saturday"}
+DEFAULT_VAT_PERCENT = Decimal("15")
+
+
+def _resolve_session_charge(
+    db: Session,
+    session: SessionModel,
+    tenant_id: int,
+) -> Decimal:
+    """Use stored total_charge, else payments sum, else calculated bill total."""
+    if session.total_charge is not None and session.total_charge > 0:
+        return session.total_charge
+
+    if session.payments:
+        paid = sum(
+            (
+                p.amount
+                for p in session.payments
+                if p.status in ("completed", "on_account")
+            ),
+            Decimal("0"),
+        ).quantize(Decimal("0.01"))
+        if paid > 0:
+            return paid
+
+    try:
+        breakdown = calculate_bill(
+            db,
+            session.id,
+            tenant_id,
+            vat_percent=DEFAULT_VAT_PERCENT,
+            discount_amount=Decimal("0"),
+        )
+        return breakdown.get("total", Decimal("0"))
+    except Exception:
+        return Decimal("0")
+
+
+def _session_revenue_date(session: SessionModel) -> date | None:
+    """Attribute revenue to the day the session was closed (or started)."""
+    anchor = session.end_time or session.start_time
+    return anchor.date() if anchor else None
+
+
+def _player_group_key(player: SessionPlayer) -> str:
+    """Group repeat visits by customer name (case-insensitive)."""
+    name = (player.name or "").strip()
+    if name:
+        return name.lower()
+    if player.mobile:
+        return f"mobile:{player.mobile.strip()}"
+    return f"player:{player.id}"
 
 
 def _date_range_for_period(
@@ -167,7 +222,7 @@ def customer_report(
         )
         .all()
     )
-    by_player: dict[int, dict] = {}
+    by_player: dict[str, dict] = {}
     for s in sessions:
         duration = compute_duration_seconds(s)
         rate = _get_rate_for_session(db, s) or Decimal("0")
@@ -175,19 +230,20 @@ def customer_report(
         game_charge = (hours * rate).quantize(Decimal("0.01"))
         for p in s.players:
             order_total = sum((o.price * o.quantity for o in p.orders), Decimal("0")).quantize(Decimal("0.01"))
-            if p.id not in by_player:
-                by_player[p.id] = {
+            key = _player_group_key(p)
+            if key not in by_player:
+                by_player[key] = {
                     "player_id": p.id,
-                    "player_name": p.name,
+                    "player_name": (p.name or "").strip() or f"Player {p.id}",
                     "session_count": 0,
                     "total_spend": Decimal("0"),
                     "game_charge": Decimal("0"),
                     "canteen_charge": Decimal("0"),
                 }
-            by_player[p.id]["session_count"] += 1
-            by_player[p.id]["total_spend"] += game_charge + order_total
-            by_player[p.id]["game_charge"] += game_charge
-            by_player[p.id]["canteen_charge"] += order_total
+            by_player[key]["session_count"] += 1
+            by_player[key]["total_spend"] += game_charge + order_total
+            by_player[key]["game_charge"] += game_charge
+            by_player[key]["canteen_charge"] += order_total
     return {
         "period": period,
         "start_date": start_d,
@@ -264,6 +320,16 @@ def products_report(
         )
         .all()
     )
+    walk_in_items = (
+        db.query(CanteenBillItem)
+        .join(CanteenBill, CanteenBillItem.canteen_bill_id == CanteenBill.id)
+        .filter(
+            CanteenBill.tenant_id == tenant_id,
+            CanteenBill.created_at >= start_dt,
+            CanteenBill.created_at <= end_dt,
+        )
+        .all()
+    )
     by_product: dict[int, dict] = {}
     for o in orders:
         prod = db.query(Product).filter(Product.id == o.product_id).first()
@@ -277,6 +343,18 @@ def products_report(
             }
         by_product[o.product_id]["quantity_sold"] += o.quantity
         by_product[o.product_id]["revenue"] += rev
+    for item in walk_in_items:
+        prod = db.query(Product).filter(Product.id == item.product_id).first()
+        rev = (item.price * item.quantity).quantize(Decimal("0.01"))
+        if item.product_id not in by_product:
+            by_product[item.product_id] = {
+                "product_id": item.product_id,
+                "product_name": prod.name if prod else str(item.product_id),
+                "quantity_sold": 0,
+                "revenue": Decimal("0"),
+            }
+        by_product[item.product_id]["quantity_sold"] += item.quantity
+        by_product[item.product_id]["revenue"] += rev
     return {
         "period": period,
         "start_date": start_d,
@@ -704,6 +782,149 @@ def table_utilization_report(
         "end_date": end_d,
         "utilization_percent": collective["utilization_percent"],
         "units": units_data["units"],
+    }
+
+
+def profitability_report(
+    db: Session,
+    tenant_id: int,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+) -> dict:
+    """
+    Profitability breakdown: revenue per day, weekend (Thu–Sat), customers, canteen.
+    """
+    start_d, end_d = _date_range_for_period("custom", start_date, end_date)
+    start_dt = datetime.combine(start_d, datetime.min.time()).replace(tzinfo=timezone.utc)
+    end_dt = datetime.combine(end_d, datetime.max.time()).replace(tzinfo=timezone.utc)
+
+    sessions = (
+        db.query(SessionModel)
+        .filter(
+            SessionModel.tenant_id == tenant_id,
+            SessionModel.status == "ended",
+            SessionModel.end_time.isnot(None),
+            SessionModel.end_time >= start_dt,
+            SessionModel.end_time <= end_dt,
+        )
+        .all()
+    )
+
+    by_date: dict[date, Decimal] = defaultdict(lambda: Decimal("0"))
+    weekend_by_weekday: dict[int, Decimal] = defaultdict(lambda: Decimal("0"))
+    total_revenue = Decimal("0")
+    game_revenue = Decimal("0")
+
+    for s in sessions:
+        charge = _resolve_session_charge(db, s, tenant_id)
+        if charge <= 0:
+            continue
+        total_revenue += charge
+        duration = compute_duration_seconds(s)
+        rate = _get_rate_for_session(db, s) or Decimal("0")
+        hours = Decimal(duration) / Decimal("3600")
+        game_revenue += (hours * rate).quantize(Decimal("0.01"))
+
+        session_date = _session_revenue_date(s)
+        if not session_date:
+            continue
+        by_date[session_date] += charge
+        weekday = session_date.weekday()
+        if weekday in WEEKEND_WEEKDAYS:
+            weekend_by_weekday[weekday] += charge
+
+    walk_in_bills = (
+        db.query(CanteenBill)
+        .filter(
+            CanteenBill.tenant_id == tenant_id,
+            CanteenBill.created_at >= start_dt,
+            CanteenBill.created_at <= end_dt,
+        )
+        .all()
+    )
+    for bill in walk_in_bills:
+        bill_total = sum(
+            (item.price * item.quantity for item in bill.items),
+            Decimal("0"),
+        ).quantize(Decimal("0.01"))
+        if bill_total <= 0:
+            continue
+        total_revenue += bill_total
+        bill_date = bill.created_at.date() if bill.created_at else start_d
+        by_date[bill_date] += bill_total
+        weekday = bill_date.weekday()
+        if weekday in WEEKEND_WEEKDAYS:
+            weekend_by_weekday[weekday] += bill_total
+
+    canteen_revenue = total_revenue - game_revenue
+    if canteen_revenue < 0:
+        canteen_revenue = Decimal("0")
+
+    revenue_by_day = [
+        {"date": d, "revenue": rev}
+        for d, rev in sorted(by_date.items(), key=lambda kv: kv[0])
+    ]
+    ranked_days = sorted(revenue_by_day, key=lambda x: x["revenue"], reverse=True)
+    revenue_by_day_ranked = [
+        {"rank": i, "date": row["date"], "revenue": row["revenue"]}
+        for i, row in enumerate(ranked_days, start=1)
+    ]
+
+    weekend_breakdown = [
+        {
+            "day_name": WEEKEND_WEEKDAYS[wd],
+            "weekday": wd,
+            "revenue": weekend_by_weekday.get(wd, Decimal("0")),
+        }
+        for wd in sorted(WEEKEND_WEEKDAYS)
+    ]
+    weekend_revenue = sum(
+        (row["revenue"] for row in weekend_breakdown),
+        Decimal("0"),
+    )
+
+    customer_data = customer_report(
+        db, tenant_id, period="custom", start_date=start_d, end_date=end_d
+    )
+    customers = sorted(
+        customer_data["customers"],
+        key=lambda c: c["total_spend"],
+        reverse=True,
+    )
+    customers_ranked = [
+        {
+            "rank": i,
+            "player_id": c["player_id"],
+            "player_name": c["player_name"],
+            "session_count": c["session_count"],
+            "total_spend": c["total_spend"],
+            "game_charge": c["game_charge"],
+            "canteen_charge": c["canteen_charge"],
+        }
+        for i, c in enumerate(customers, start=1)
+    ]
+
+    products_data = products_report(
+        db, tenant_id, period="custom", start_date=start_d, end_date=end_d
+    )
+    canteen_products = sorted(
+        products_data["products"],
+        key=lambda p: p["revenue"],
+        reverse=True,
+    )
+
+    return {
+        "start_date": start_d,
+        "end_date": end_d,
+        "total_revenue": total_revenue,
+        "weekend_revenue": weekend_revenue,
+        "canteen_revenue": canteen_revenue,
+        "game_revenue": game_revenue,
+        "revenue_by_day": revenue_by_day,
+        "revenue_by_day_ranked": revenue_by_day_ranked,
+        "weekend_breakdown": weekend_breakdown,
+        "customers": customers_ranked,
+        "canteen_products": canteen_products,
     }
 
 

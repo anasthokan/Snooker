@@ -21,6 +21,7 @@ import CompletedSessionDetail from './pages/tenant/CompletedSessionDetail';
 import Canteen from './pages/tenant/Canteen';
 import EndSession from './pages/tenant/EndSession';
 import Reports from './pages/tenant/Reports';
+import Repayments from './pages/tenant/Repayments';
 import RoleManagement from './pages/tenant/RoleManagement';
 import Products from './pages/tenant/Products';
 import Customers from './pages/tenant/Customers';
@@ -285,6 +286,16 @@ export default function App() {
               <ProtectedRoute allowedRoles={['tenant_owner', 'manager', 'cashier']}>
                 <AppLayout>
                   <Reports />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tenant/repayments"
+            element={
+              <ProtectedRoute allowedRoles={['tenant_owner', 'manager', 'cashier']}>
+                <AppLayout>
+                  <Repayments />
                 </AppLayout>
               </ProtectedRoute>
             }

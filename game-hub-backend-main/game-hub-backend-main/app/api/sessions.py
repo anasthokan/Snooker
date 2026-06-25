@@ -2,6 +2,8 @@
 """
 Sessions API (v1): session detail includes orders (canteen) so returning to session shows saved items.
 """
+from decimal import Decimal
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -33,6 +35,7 @@ from app.services.session_engine import (
     add_player_to_session,
     compute_duration_seconds,
 )
+from app.services.billing_service import calculate_bill, apply_total_to_session
 
 router = APIRouter(prefix="/sessions", tags=["Sessions"], dependencies=[RequireCashier])
 
@@ -145,6 +148,21 @@ def session_end(
 ):
     try:
         session = end_session(db, body.session_id, current_user.tenant_id)
+        if not session.total_charge or session.total_charge <= 0:
+            breakdown = calculate_bill(
+                db,
+                session.id,
+                current_user.tenant_id,
+                vat_percent=Decimal("15"),
+                discount_amount=Decimal("0"),
+            )
+            apply_total_to_session(
+                db,
+                session.id,
+                current_user.tenant_id,
+                breakdown["total"],
+            )
+            db.refresh(session)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     return SuccessResponse(

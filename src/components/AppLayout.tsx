@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { getFeatures } from '../api';
 import ThemeToggle from './ThemeToggle';
+import { REPORT_NAV_ITEMS, REPORT_SECTION_LABELS, type ReportSection } from '../constants/reportSections';
 import './AppLayout.css';
 
 const superAdminNav = [
@@ -12,9 +13,16 @@ const superAdminNav = [
   { to: '/super/metrics', label: 'System Metrics' },
 ];
 
-const tenantNavAll = [
-  { to: '/tenant', label: 'Tables', feature: 'dashboard' as const },
-  { to: '/tenant/overview', label: 'Overview', feature: 'dashboard' as const },
+type TenantNavItem = {
+  to: string;
+  label: string;
+  feature?: 'dashboard' | 'reports' | 'role_management';
+  children?: { section: ReportSection; label: string }[];
+};
+
+const tenantNavAll: TenantNavItem[] = [
+  { to: '/tenant', label: 'Tables', feature: 'dashboard' },
+  { to: '/tenant/overview', label: 'Overview', feature: 'dashboard' },
   { to: '/tenant/game-types', label: 'Game Types' },
   { to: '/tenant/game-units', label: 'Game Units' },
   { to: '/tenant/products', label: 'Products' },
@@ -24,14 +32,25 @@ const tenantNavAll = [
   { to: '/tenant/tournament', label: 'Keep Tournament Going' },
   { to: '/tenant/sessions', label: 'Active Sessions' },
   { to: '/tenant/completed-sessions', label: 'Completed Sessions' },
-  { to: '/tenant/reports', label: 'Reports', feature: 'reports' as const },
-  { to: '/tenant/roles', label: 'Role Management', feature: 'role_management' as const },
+  { to: '/tenant/repayments', label: 'Bill Payment' },
+  {
+    to: '/tenant/reports',
+    label: 'Reports',
+    feature: 'reports',
+    children: REPORT_NAV_ITEMS.map(({ section }) => ({
+      section,
+      label: REPORT_SECTION_LABELS[section],
+    })),
+  },
+  { to: '/tenant/roles', label: 'Role Management', feature: 'role_management' },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [features, setFeatures] = useState<{ dashboard?: boolean; reports?: boolean; role_management?: boolean } | null>(null);
+  const [reportsOpen, setReportsOpen] = useState(location.pathname.startsWith('/tenant/reports'));
   const isSuperAdmin = user?.role === 'super_admin';
 
   useEffect(() => {
@@ -44,6 +63,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isSuperAdmin, user]);
 
+  useEffect(() => {
+    if (location.pathname.startsWith('/tenant/reports')) {
+      setReportsOpen(true);
+    }
+  }, [location.pathname]);
+
   const tenantNav = tenantNavAll.filter((item) => {
     if (!item.feature) return true;
     if (features == null) return true;
@@ -52,6 +77,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   });
 
   const nav = isSuperAdmin ? superAdminNav : tenantNav;
+  const activeReportSection = new URLSearchParams(location.search).get('section');
 
   const handleLogout = () => {
     logout();
@@ -66,11 +92,56 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <span className="brand-text">GameHub Pro</span>
         </div>
         <nav className="sidebar-nav">
-          {nav.map(({ to, label }) => (
-            <NavLink key={to} to={to} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`} end={to === '/super' || to === '/tenant'}>
-              {label}
-            </NavLink>
-          ))}
+          {nav.map((item) => {
+            const reportItem = item as TenantNavItem;
+            if (reportItem.children?.length) {
+              const isReportsActive = location.pathname.startsWith(reportItem.to);
+              return (
+                <div key={reportItem.to} className="nav-group">
+                  <button
+                    type="button"
+                    className={`nav-group-toggle ${isReportsActive ? 'active' : ''}`}
+                    onClick={() => setReportsOpen((open) => !open)}
+                    aria-expanded={reportsOpen}
+                  >
+                    <span>{reportItem.label}</span>
+                    <span className={`nav-group-chevron ${reportsOpen ? 'open' : ''}`}>▶</span>
+                  </button>
+                  {reportsOpen && (
+                    <div className="nav-group-items">
+                      {reportItem.children.map((child) => {
+                        const to = `${reportItem.to}?section=${child.section}`;
+                        const sectionActive =
+                          isReportsActive &&
+                          (activeReportSection === child.section ||
+                            (!activeReportSection && child.section === 'overview'));
+                        return (
+                          <Link
+                            key={child.section}
+                            to={to}
+                            className={`nav-sub-item${sectionActive ? ' active' : ''}`}
+                          >
+                            {child.label}
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                end={item.to === '/super' || item.to === '/tenant'}
+              >
+                {item.label}
+              </NavLink>
+            );
+          })}
         </nav>
         <div className="sidebar-footer">
           <div className="user-info">
