@@ -19,6 +19,31 @@ from app.schemas.auth import TokenPayload
 logger = logging.getLogger(__name__)
 settings = get_settings()
 RESET_TOKEN_EXPIRE_HOURS = 1
+SUPER_ADMIN_ROLE = "SUPER_ADMIN"
+
+
+def is_user_access_allowed(user: User) -> bool:
+    """Staff login/API access: active user; tenant must be active unless super admin."""
+    if not user.is_active:
+        return False
+    role_name = user.role.name if user.role else None
+    if role_name == SUPER_ADMIN_ROLE:
+        return True
+    tenant = user.tenant
+    if not tenant or tenant.status != "active":
+        return False
+    return True
+
+
+def _load_user_by_email(db: Session, email_clean: str) -> Optional[User]:
+    from sqlalchemy.orm import selectinload
+
+    return (
+        db.query(User)
+        .options(selectinload(User.role), selectinload(User.tenant))
+        .filter(func.lower(User.email) == email_clean)
+        .first()
+    )
 
 
 def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
@@ -26,14 +51,29 @@ def authenticate_user(db: Session, email: str, password: str) -> Optional[User]:
     email_clean = (email or "").strip().lower()
     if not email_clean:
         return None
-    user = db.query(User).filter(func.lower(User.email) == email_clean).first()
+    user = _load_user_by_email(db, email_clean)
     if not user:
-        return None
-    if not user.is_active:
         return None
     if not verify_password(password, user.password_hash):
         return None
+    if not is_user_access_allowed(user):
+        return None
     return user
+
+
+def authenticate_user_login_error(db: Session, email: str, password: str) -> str | None:
+    """Return a user-facing login error, or None if credentials are invalid."""
+    email_clean = (email or "").strip().lower()
+    if not email_clean:
+        return None
+    user = _load_user_by_email(db, email_clean)
+    if not user or not verify_password(password, user.password_hash):
+        return None
+    if not user.is_active:
+        return "Your user account is disabled."
+    if not is_user_access_allowed(user):
+        return "This parlour has been deactivated. Contact the platform administrator."
+    return None
 
 
 def create_tokens_for_user(user: User) -> TokenPayload:
@@ -53,9 +93,14 @@ def create_tokens_for_user(user: User) -> TokenPayload:
 
 
 def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
-    """Get user by id (for refresh token and current user). Loads role for RBAC."""
+    """Get user by id (for refresh token and current user). Loads role and tenant."""
     from sqlalchemy.orm import selectinload
-    return db.query(User).options(selectinload(User.role)).filter(User.id == user_id).first()
+    return (
+        db.query(User)
+        .options(selectinload(User.role), selectinload(User.tenant))
+        .filter(User.id == user_id)
+        .first()
+    )
 
 
 def validate_refresh_token(db: Session, refresh_token: str) -> Optional[User]:
@@ -68,7 +113,7 @@ def validate_refresh_token(db: Session, refresh_token: str) -> Optional[User]:
     except (KeyError, ValueError):
         return None
     user = get_user_by_id(db, user_id)
-    if not user or not user.is_active:
+    if not user or not is_user_access_allowed(user):
         return None
     return user
 

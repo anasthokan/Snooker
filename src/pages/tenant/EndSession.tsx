@@ -22,7 +22,7 @@ export default function EndSessionPage() {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const tenantId = Number(user?.tenantId || 1);
+  const tenantId = user?.tenantId ? Number(user.tenantId) : null;
   const [session, setSession] = useState<SessionItem | null>(null);
   const [bill, setBill] = useState<{ subtotal?: number; vat?: number; vat_amount?: number; discount_amount?: number; total?: number } | null>(null);
   const [vatPercent] = useState(15);
@@ -87,7 +87,7 @@ export default function EndSessionPage() {
   }, [method]);
 
   useEffect(() => {
-    if (method !== 'online') return;
+    if (method !== 'online' || tenantId == null) return;
     getPayConfig(tenantId)
       .then((res) => setPublishableKey(res.data?.publishable_key ?? ''))
       .catch(() => setPublishableKey(''));
@@ -276,7 +276,7 @@ export default function EndSessionPage() {
             <option value="online">Online (Mada / Card / Apple Pay)</option>
           </select>
         </div>
-        {method === 'online' && paymentMode === 'single' && total > 0 && (
+        {method === 'online' && paymentMode === 'single' && total > 0 && tenantId != null && (
           <div style={{ marginBottom: '1rem' }}>
             {publishableKey ? (
               <MoyasarCheckout

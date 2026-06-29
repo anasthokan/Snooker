@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { ApiError } from '../../api';
 import ThemeToggle from '../../components/ThemeToggle';
 import './Auth.css';
 
@@ -15,13 +16,17 @@ export default function Login() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    const ok = await login(email, password);
-    if (ok) {
-      const u = JSON.parse(sessionStorage.getItem('gamehub_user') || '{}');
-      if (u.role === 'super_admin') navigate('/super');
-      else navigate('/tenant');
-    } else {
-      setError('Invalid email or password');
+    try {
+      const ok = await login(email, password);
+      if (ok) {
+        const u = JSON.parse(sessionStorage.getItem('gamehub_user') || '{}');
+        if (u.role === 'super_admin') navigate('/super');
+        else navigate('/tenant');
+      } else {
+        setError('Invalid email or password');
+      }
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Login failed');
     }
   };
 
@@ -81,6 +86,9 @@ export default function Login() {
             )}
           </button>
           <Link to="/forgot-password" className="auth-link">Forgot password?</Link>
+          <Link to="/signup" className="auth-link" style={{ marginTop: '0.75rem' }}>
+            New parlour? Sign up
+          </Link>
         </form>
       </div>
     </div>

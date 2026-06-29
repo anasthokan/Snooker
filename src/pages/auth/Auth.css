@@ -102,3 +102,65 @@
 .password-toggle:hover {
   color: var(--accent);
 }
+
+.auth-card-wide {
+  max-width: 480px;
+}
+
+.signup-pricing-box {
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.signup-pricing-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.signup-pricing-note,
+.signup-pricing-muted {
+  margin: 0.35rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.signup-pricing-error {
+  margin: 0;
+  color: var(--danger, #dc2626);
+  font-size: 0.9rem;
+}
+
+.signup-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.coupon-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.coupon-row .form-input {
+  flex: 1;
+}
+
+.coupon-row .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.signup-dev-banner {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+  border-radius: var(--radius-lg);
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  text-align: center;
+}

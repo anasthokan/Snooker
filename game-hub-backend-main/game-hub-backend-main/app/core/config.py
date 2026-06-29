@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     bcrypt_rounds: int = 12
 
     # CORS (for React frontend)
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:5173,http://localhost:5174"
 
     # Billing / invoices
     bill_verification_base_url: Optional[str] = None
@@ -63,6 +63,13 @@ class Settings(BaseSettings):
     moyasar_publishable_key: Optional[str] = None
     moyasar_secret_key: Optional[str] = None
     public_app_url: str = "http://localhost:5173"
+
+    # Stripe subscription billing (tenant signup)
+    stripe_secret_key: Optional[str] = None
+    stripe_publishable_key: Optional[str] = None
+    stripe_webhook_secret: Optional[str] = None
+    stripe_price_sar: Optional[str] = None  # optional Price ID; uses price_data if unset
+    stripe_price_inr: Optional[str] = None
 
 
 @lru_cache

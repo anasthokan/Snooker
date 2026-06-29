@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 
 from app.api.auth import router as auth_router
+from app.api.signup import router as signup_router
 from app.api.tenants import router as tenants_router
 from app.api.users import router as users_router
 from app.api.games import router as games_router
@@ -69,6 +70,7 @@ app.add_middleware(
 app.add_middleware(TenantMiddleware)
 
 app.include_router(auth_router)
+app.include_router(signup_router)
 app.include_router(tenants_router)
 app.include_router(users_router)
 app.include_router(games_router)

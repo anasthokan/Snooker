@@ -11,7 +11,7 @@ from app.core.database import get_db
 from app.core.jwt import decode_token
 from app.models.user import User
 from app.models.customer import Customer
-from app.services.auth_service import get_user_by_id
+from app.services.auth_service import get_user_by_id, is_user_access_allowed
 from app.services.customer_auth_service import get_customer_by_id
 
 security = HTTPBearer(auto_error=False)
@@ -50,7 +50,10 @@ def get_current_user_optional(
     except (KeyError, ValueError):
         return None
     user = get_user_by_id(db, user_id)
-    if not user or not user.is_active:
+    if not user or not is_user_access_allowed(user):
+        return None
+    token_tenant_id = payload.get("tenant_id")
+    if token_tenant_id is not None and int(token_tenant_id) != user.tenant_id:
         return None
     return user
 

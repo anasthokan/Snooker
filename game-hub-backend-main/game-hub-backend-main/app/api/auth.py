@@ -12,6 +12,7 @@ from app.schemas.auth import TokenPayload, RefreshRequest, ForgotPasswordRequest
 from app.schemas.common import SuccessResponse, ErrorResponse
 from app.services.auth_service import (
     authenticate_user,
+    authenticate_user_login_error,
     create_tokens_for_user,
     validate_refresh_token,
     request_password_reset,
@@ -51,6 +52,12 @@ def login(
     db: Session = Depends(get_db),
 ):
     """Authenticate with email and password; returns access and refresh tokens."""
+    login_error = authenticate_user_login_error(db, email.strip().lower(), password)
+    if login_error:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=login_error,
+        )
     user = authenticate_user(db, email.strip().lower(), password)
     if not user:
         raise HTTPException(

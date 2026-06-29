@@ -6,6 +6,7 @@
   "scripts": {
     "start": "vite",
     "dev": "vite",
+    "dev:api": "powershell -ExecutionPolicy Bypass -File scripts/dev-api.ps1",
     "build": "tsc -b && vite build",
     "build:split": "tsc -b && vite build --mode split",
     "lint": "eslint .",

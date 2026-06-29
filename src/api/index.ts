@@ -1,6 +1,7 @@
 export { API_BASE_URL, getAccessToken, setAccessToken, clearAccessToken } from './config';
 export { api, ApiError } from './client';
 export * from './auth';
+export * from './signup';
 export * from './health';
 export * from './tenants';
 export * from './users';

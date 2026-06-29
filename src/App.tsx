@@ -4,6 +4,8 @@ import { ThemeProvider } from './context/ThemeContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import AppLayout from './components/AppLayout';
 import Login from './pages/auth/Login';
+import Signup from './pages/auth/Signup';
+import SignupSuccess from './pages/auth/SignupSuccess';
 import ForgotPassword from './pages/auth/ForgotPassword';
 import SuperDashboard from './pages/superadmin/SuperDashboard';
 import TenantsList from './pages/superadmin/TenantsList';
@@ -44,6 +46,8 @@ export default function App() {
         <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/signup/success" element={<SignupSuccess />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/pay" element={<CustomerPay />} />
           <Route path="/pay/success" element={<PaySuccess />} />

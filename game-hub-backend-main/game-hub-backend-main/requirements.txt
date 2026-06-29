@@ -23,6 +23,7 @@ pydantic-settings==2.1.0
 # Utilities
 python-dotenv==1.0.1
 reportlab==4.2.5
+stripe==11.1.0
 
 # Testing
 # pytest==8.0.0

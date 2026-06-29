@@ -9,6 +9,7 @@ import {
   getMe,
   ApiError,
 } from '../api';
+import type { ProfileItem } from '../api/types';
 import { clearAccessToken, clearRefreshToken } from '../api/config';
 
 interface AuthContextType {
@@ -21,6 +22,8 @@ interface AuthContextType {
     password: string,
     email?: string
   ) => Promise<boolean>;
+  establishSession: (user: User) => void;
+  clearSession: () => void;
   logout: () => void;
   forgotPassword: (email: string) => Promise<boolean>;
   isLoading: boolean;
@@ -35,10 +38,40 @@ const ROLE_MAP: Record<number, User['role']> = {
   4: 'cashier',
 };
 
+const ROLE_NAME_MAP: Record<string, User['role']> = {
+  SUPER_ADMIN: 'super_admin',
+  TENANT_ADMIN: 'tenant_owner',
+  MANAGER: 'manager',
+  CASHIER: 'cashier',
+};
+
+function userFromStaffProfile(email: string, profile?: ProfileItem): User {
+  const roleName = profile?.role_name?.toUpperCase();
+  const role = (roleName && ROLE_NAME_MAP[roleName]) || 'tenant_owner';
+  const displayName =
+    role === 'super_admin'
+      ? profile?.email?.split('@')[0] ?? 'Super Admin'
+      : profile?.tenant_name ?? profile?.display_name ?? email.split('@')[0] ?? 'User';
+  return {
+    id: profile?.id != null ? String(profile.id) : '',
+    email: profile?.email ?? email,
+    name: displayName,
+    role,
+    tenantId: profile?.tenant_id != null ? String(profile.tenant_id) : undefined,
+  };
+}
+
+export function buildStaffUserFromProfile(email: string, profile?: ProfileItem): User {
+  return userFromStaffProfile(email, profile);
+}
+
 function userFromLoginResponse(email: string, data?: { user?: { id: number; email: string; role_id?: number; tenant_id?: number } }): User {
   const u = data?.user;
   const roleId = u?.role_id ?? 0;
-  const role = ROLE_MAP[roleId] ?? (email.includes('admin') ? 'super_admin' : 'cashier');
+  const emailLower = email.toLowerCase();
+  const role =
+    ROLE_MAP[roleId] ??
+    (emailLower.includes('super_admin') || emailLower.startsWith('super') ? 'super_admin' : 'cashier');
   return {
     id: String(u?.id ?? ''),
     email: u?.email ?? email,
@@ -74,31 +107,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!user || user.role === 'customer' || user.tenantId) return;
-    getMe()
-      .then((profile) => {
-        if (profile.data?.tenant_id != null) {
-          const updated = {
-            ...user,
-            tenantId: String(profile.data.tenant_id),
-            name: profile.data.display_name || user.name,
-          };
-          setUser(updated);
-          sessionStorage.setItem('gamehub_user', JSON.stringify(updated));
-        }
-      })
-      .catch(() => {});
-  }, [user]);
+    const token = sessionStorage.getItem('gamehub_access_token');
+    const stored = sessionStorage.getItem('gamehub_user');
+    if (!token || !stored) return;
+    try {
+      const parsed = JSON.parse(stored) as User;
+      if (parsed.role === 'customer') return;
+      getMe()
+        .then((profile) => {
+          if (!profile.data) return;
+          const refreshed = buildStaffUserFromProfile(parsed.email, profile.data);
+          setUser(refreshed);
+          sessionStorage.setItem('gamehub_user', JSON.stringify(refreshed));
+        })
+        .catch(() => {});
+    } catch {
+      // ignore invalid session
+    }
+  }, []);
 
   const login = useCallback(async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const res = await apiLogin({ email, password });
-      let u = userFromLoginResponse(email, res.data);
+      await apiLogin({ email, password });
+      let u = userFromLoginResponse(email);
       try {
         const profile = await getMe();
-        if (profile.data?.tenant_id != null) {
-          u = { ...u, tenantId: String(profile.data.tenant_id), name: profile.data.display_name || u.name };
+        if (profile.data) {
+          u = buildStaffUserFromProfile(email, profile.data);
         }
       } catch {
         // profile optional on login
@@ -166,6 +202,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearRefreshToken();
   }, []);
 
+  const clearSession = useCallback(() => {
+    setUser(null);
+    sessionStorage.removeItem('gamehub_user');
+    clearAccessToken();
+    clearRefreshToken();
+  }, []);
+
+  const establishSession = useCallback((u: User) => {
+    setUser(u);
+    sessionStorage.setItem('gamehub_user', JSON.stringify(u));
+  }, []);
+
   const forgotPassword = useCallback(async (email: string): Promise<boolean> => {
     setIsLoading(true);
     try {
@@ -181,7 +229,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ user, login, customerLogin, customerSignup, logout, forgotPassword, isLoading }}
+      value={{
+        user,
+        login,
+        customerLogin,
+        customerSignup,
+        establishSession,
+        clearSession,
+        logout,
+        forgotPassword,
+        isLoading,
+      }}
     >
       {children}
     </AuthContext.Provider>
