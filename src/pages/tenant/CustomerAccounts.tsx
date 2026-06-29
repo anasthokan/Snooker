@@ -7,6 +7,7 @@ import {
   type CustomerAccountDetail,
 } from '../../api/customerAccounts';
 import { CurrencyIcon } from '../../components/CurrencyIcon';
+import { useAuth } from '../../context/AuthContext';
 
 function monthRange(): { start: string; end: string } {
   const now = new Date();
@@ -17,8 +18,13 @@ function monthRange(): { start: string; end: string } {
 }
 
 export default function CustomerAccounts() {
+  const { user } = useAuth();
   const customerPayUrl = `${window.location.origin}/pay`;
-  const customerPortalUrl = `${window.location.origin}/customer/login`;
+  const customerPortalUrl = useMemo(() => {
+    const base = `${window.location.origin}/customer/login`;
+    if (user?.tenantId) return `${base}?tenant=${user.tenantId}`;
+    return base;
+  }, [user?.tenantId]);
   const initialRange = useMemo(() => monthRange(), []);
   const [searchQuery, setSearchQuery] = useState('');
   const [startDate, setStartDate] = useState(initialRange.start);

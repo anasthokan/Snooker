@@ -8,7 +8,8 @@ import '../auth/Auth.css';
 export default function CustomerLogin() {
   const [searchParams] = useSearchParams();
   const tenantParam = searchParams.get('tenant');
-  const { tenantName, loading, configError } = useCustomerParlour(tenantParam);
+  const tenantQuery = tenantParam ? `?tenant=${encodeURIComponent(tenantParam)}` : '';
+  const { tenantName, tenantId, loading, configError } = useCustomerParlour(tenantParam);
   const [mobile, setMobile] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -26,7 +27,7 @@ export default function CustomerLogin() {
     e.preventDefault();
     setError('');
     try {
-      const ok = await customerLogin(mobile, password);
+      const ok = await customerLogin(mobile, password, tenantId ?? undefined);
       if (ok) {
         navigate('/customer/tables');
       } else {
@@ -102,7 +103,7 @@ export default function CustomerLogin() {
           >
             {isLoading ? 'Signing in…' : 'Login'}
           </button>
-          <Link to="/customer/signup" className="auth-link">
+          <Link to={`/customer/signup${tenantQuery}`} className="auth-link">
             New here? Create account
           </Link>
           <Link to="/login" className="auth-link" style={{ marginTop: '0.5rem' }}>

@@ -15,12 +15,13 @@ import { clearAccessToken, clearRefreshToken } from '../api/config';
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
-  customerLogin: (mobile: string, password: string) => Promise<boolean>;
+  customerLogin: (mobile: string, password: string, tenantId?: number) => Promise<boolean>;
   customerSignup: (
     name: string,
     mobile: string,
     password: string,
-    email?: string
+    email?: string,
+    tenantId?: number
   ) => Promise<boolean>;
   establishSession: (user: User) => void;
   clearSession: () => void;
@@ -150,10 +151,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const customerLogin = useCallback(async (mobile: string, password: string): Promise<boolean> => {
+  const customerLogin = useCallback(async (mobile: string, password: string, tenantId?: number): Promise<boolean> => {
     setIsLoading(true);
     try {
-      const res = await apiCustomerLogin({ mobile, password });
+      const res = await apiCustomerLogin({
+        mobile,
+        password,
+        tenant_id: tenantId,
+      });
       const c = res.data?.customer;
       if (!c) return false;
       const u = userFromCustomerAuth(c);
@@ -169,7 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const customerSignup = useCallback(
-    async (name: string, mobile: string, password: string, email?: string): Promise<boolean> => {
+    async (name: string, mobile: string, password: string, email?: string, tenantId?: number): Promise<boolean> => {
       setIsLoading(true);
       try {
         const res = await apiCustomerSignup({
@@ -177,6 +182,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           mobile,
           password,
           email: email || undefined,
+          tenant_id: tenantId,
         });
         const c = res.data?.customer;
         if (!c) return false;

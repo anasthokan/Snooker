@@ -9,7 +9,7 @@ export default function CustomerLayout({ children }: { children: React.ReactNode
 
   const handleLogout = () => {
     logout();
-    navigate('/customer/login');
+    navigate(user?.tenantId ? `/customer/login?tenant=${user.tenantId}` : '/customer/login');
   };
 
   return (

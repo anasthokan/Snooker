@@ -9,7 +9,8 @@ import '../auth/Auth.css';
 export default function CustomerSignup() {
   const [searchParams] = useSearchParams();
   const tenantParam = searchParams.get('tenant');
-  const { tenantName, loading, configError } = useCustomerParlour(tenantParam);
+  const tenantQuery = tenantParam ? `?tenant=${encodeURIComponent(tenantParam)}` : '';
+  const { tenantName, tenantId, loading, configError } = useCustomerParlour(tenantParam);
   const [name, setName] = useState('');
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
@@ -29,7 +30,7 @@ export default function CustomerSignup() {
     e.preventDefault();
     setError('');
     try {
-      const ok = await customerSignup(name, mobile, password, email || undefined);
+      const ok = await customerSignup(name, mobile, password, email || undefined, tenantId ?? undefined);
       if (ok) {
         navigate('/customer/tables');
       } else {
@@ -130,7 +131,7 @@ export default function CustomerSignup() {
           >
             {isLoading ? 'Creating account…' : 'Sign up'}
           </button>
-          <Link to="/customer/login" className="auth-link">
+          <Link to={`/customer/login${tenantQuery}`} className="auth-link">
             Already have an account? Login
           </Link>
         </form>
