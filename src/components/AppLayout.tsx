@@ -16,7 +16,7 @@ const superAdminNav = [
 type TenantNavItem = {
   to: string;
   label: string;
-  feature?: 'dashboard' | 'reports' | 'role_management';
+  feature?: 'dashboard' | 'reports';
   children?: { section: ReportSection; label: string }[];
 };
 
@@ -42,14 +42,13 @@ const tenantNavAll: TenantNavItem[] = [
       label: REPORT_SECTION_LABELS[section],
     })),
   },
-  { to: '/tenant/roles', label: 'Role Management', feature: 'role_management' },
 ];
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const [features, setFeatures] = useState<{ dashboard?: boolean; reports?: boolean; role_management?: boolean } | null>(null);
+  const [features, setFeatures] = useState<{ dashboard?: boolean; reports?: boolean } | null>(null);
   const [reportsOpen, setReportsOpen] = useState(location.pathname.startsWith('/tenant/reports'));
   const isSuperAdmin = user?.role === 'super_admin';
 
